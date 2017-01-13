@@ -19,13 +19,18 @@ we obtain the objcts for the desired page by calling the page() method of the pa
 if the page parameter is not an integer, we retrieve the first page of the results, if this parameter is a number greater than the last page of results, we retrieve the last page
 we pass the page number and retrieved objects to the template
 """
-class PostListView(ListView):
-	queryset = Post.published.all()
-	context_object_name = 'posts'
-	paginated_by = 3
-	template_name = 'blog/post/list.html'
-#if we had used model = Post, django would have automatically generated everything through Post.objects.all()
-
+def post_list(request):
+	object_list = Post.published.all()
+	paginator = Paginator(object_list, 3)
+	page = request.GET.get('page')
+	try:
+		posts = paginator.page(page)
+	except PageNotAnInteger:
+		posts = paginator.page(1)
+	except EmptyPage:
+		posts = paginator.page(paginator.num_pages)
+	return render(request, 'blog/post/list.html', {'page':page, 'posts':posts})
+	
 def post_share(request, post_id):
 	#retrieve post by id
 	post = get_object_or_404(Post, id=post_id, status='published')
@@ -44,9 +49,10 @@ def post_share(request, post_id):
 			send_mail(subject, message, 'admin@myblog.com',[cd['to']])
 			sent = True
 			
-		else:
-			form = EmailPostForm() #we create a new form instance that will be used to diaplay an empty form
-		return render(request, 'blog/post/share.html', {'post':post, 'form':form, 'sent':sent})
+	else:
+		form = EmailPostForm() #we create a new form instance that will be used to diaplay an empty form
+	return render(request, 'blog/post/share.html', {'post':post, 'form':form, 'sent':sent})
 		
 """
 Notes on using the form - we use the same view to display the intial form and process the submitted data. we differentiate the form was submitted or not based on the request method. we are going to submit the form usng the post method. we assume that if we get the get request, an empt form has to be diplayed, and if we get a post request, the form has been submitted and needs to be processed.
+"""
